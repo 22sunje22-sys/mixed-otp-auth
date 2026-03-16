@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/api/otp/(.*)", "dest": "/api/otp/$1" },
+    { "src": "/login\\.html", "dest": "/login.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

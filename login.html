@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Selly Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); color: #c8dbe6;
+    }
+    .card { text-align: center; width: 440px; max-width: 92vw; padding: 48px 32px; }
+    .logo {
+      font-size: 48px; margin-bottom: 16px;
+    }
+    h1 { font-size: 1.8rem; color: #00d4ff; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: #666; font-size: .95rem; margin-bottom: 12px; }
+
+    .notice {
+      background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 28px;
+      font-size: .85rem; color: #ffaa00; line-height: 1.5;
+    }
+
+    .method-choice { display: flex; gap: 12px; margin-bottom: 24px; }
+    .method-btn {
+      flex: 1; padding: 16px 12px; border: 1px solid #333; border-radius: 10px;
+      background: #111; color: #999; font-size: .95rem; font-weight: 600;
+      cursor: pointer; transition: all .2s; text-align: center;
+    }
+    .method-btn:hover { border-color: #555; color: #ccc; }
+    .method-btn.active { border-color: #00d4ff; color: #00d4ff; background: rgba(0,212,255,0.08); }
+    .method-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 6px; }
+
+    .auth-section { display: none; }
+    .auth-section.active { display: block; }
+
+    /* Email input */
+    .email-input {
+      width: 100%; padding: 14px 16px; border: 1px solid #333; border-radius: 10px;
+      background: #111; color: #fff; font-size: 1rem; outline: none; margin-bottom: 12px;
+      transition: border .2s;
+    }
+    .email-input:focus { border-color: #00d4ff; }
+    .email-input::placeholder { color: #555; }
+
+    .send-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px 24px; border: none; border-radius: 10px;
+      color: #000; font-size: 1rem; font-weight: 700;
+      cursor: pointer; transition: all .2s;
+    }
+    .send-btn:hover { transform: translateY(-1px); }
+    .send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-email {
+      background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+      box-shadow: 0 4px 16px rgba(0,212,255,.3);
+    }
+    .btn-slack {
+      background: linear-gradient(135deg, #6b2fa0, #4A154B);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(75,21,75,.4);
+    }
+
+    .hint { margin-top: 14px; font-size: .83rem; color: #555; line-height: 1.6; }
+    .hint strong { color: #888; }
+
+    .otp-section { display: none; margin-top: 24px; }
+    .otp-section.active { display: block; }
+    .otp-label { font-size: .85rem; color: #888; margin-bottom: 8px; }
+    .otp-input {
+      width: 100%; padding: 14px; border: 1px solid #333; border-radius: 10px;
+      background: #111; color: #00d4ff; font-size: 1.8rem; text-align: center;
+      letter-spacing: .5em; font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none; transition: border .2s;
+    }
+    .otp-input:focus { border-color: #00d4ff; }
+    .otp-input::placeholder { color: #333; letter-spacing: .3em; font-size: 1.4rem; }
+    .msg { margin-top: 12px; font-size: .85rem; padding: 10px; border-radius: 8px; }
+    .msg.err { background: rgba(198,40,40,.15); color: #ef9a9a; }
+    .msg.ok { background: rgba(0,212,255,.1); color: #00d4ff; }
+    .back-link {
+      display: inline-block; margin-top: 14px; color: #555;
+      font-size: .82rem; cursor: pointer; text-decoration: none;
+    }
+    .back-link:hover { color: #00d4ff; }
+
+    .domain-note { font-size: .78rem; color: #444; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">📊</div>
+    <h1>Selly Dashboard</h1>
+    <p class="subtitle">Platinumlist Sales Dashboard</p>
+
+    <div class="notice">
+      We've upgraded login security — password login has been removed.<br>
+      Please use Email or Slack OTP to sign in. Sorry for the inconvenience!
+    </div>
+
+    <!-- Method choice -->
+    <div class="method-choice">
+      <button class="method-btn active" id="btn-method-email" onclick="switchMethod('email')">
+        <span class="icon">📧</span> Email OTP
+      </button>
+      <button class="method-btn" id="btn-method-slack" onclick="switchMethod('slack')">
+        <span class="icon">💬</span> Slack OTP
+      </button>
+    </div>
+
+    <!-- Email Auth Section -->
+    <div class="auth-section active" id="section-email">
+      <input type="email" class="email-input" id="email-input" placeholder="your.name@platinumlist.net" autocomplete="email">
+      <button class="send-btn btn-email" id="btn-email-send" onclick="requestEmailOtp()">
+        Send Code to Email
+      </button>
+      <p class="domain-note">Only @platinumlist.net emails are allowed</p>
+
+      <div class="otp-section" id="email-otp-section">
+        <p class="otp-label">Check your inbox and paste the 6-digit code</p>
+        <input type="text" class="otp-input" id="email-code" maxlength="6" inputmode="numeric" placeholder="------" autocomplete="one-time-code">
+        <div id="email-msg" class="msg" style="display:none"></div>
+        <a class="back-link" onclick="resetEmail()">← Back</a>
+      </div>
+    </div>
+
+    <!-- Slack Auth Section -->
+    <div class="auth-section" id="section-slack">
+      <button class="send-btn btn-slack" id="btn-slack-send" onclick="requestSlackOtp()">
+        Login via Slack (Gatey)
+      </button>
+      <p class="hint">
+        Open DM with <strong>@gatey</strong> in Slack, send <strong>otp selly</strong>, then paste the code below.
+      </p>
+
+      <div class="otp-section" id="slack-otp-section">
+        <p class="otp-label">Paste your 6-digit code</p>
+        <input type="text" class="otp-input" id="slack-code" maxlength="6" inputmode="numeric" placeholder="------" autocomplete="one-time-code">
+        <div id="slack-msg" class="msg" style="display:none"></div>
+        <a class="back-link" onclick="resetSlack()">← Back</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check if already authenticated
+    fetch('/api/otp/session').then(r => r.json()).then(d => {
+      if (d.authenticated) location.href = '/';
+    });
+
+    function switchMethod(method) {
+      document.getElementById('btn-method-email').classList.toggle('active', method === 'email');
+      document.getElementById('btn-method-slack').classList.toggle('active', method === 'slack');
+      document.getElementById('section-email').classList.toggle('active', method === 'email');
+      document.getElementById('section-slack').classList.toggle('active', method === 'slack');
+    }
+
+    function showMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + type;
+      el.style.display = 'block';
+    }
+
+    // === EMAIL OTP ===
+    async function requestEmailOtp() {
+      const email = document.getElementById('email-input').value.trim().toLowerCase();
+      if (!email || !email.includes('@')) return showMsg('email-msg', 'Please enter a valid email', 'err');
+
+      const btn = document.getElementById('btn-email-send');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+
+      try {
+        const res = await fetch('/api/otp/email-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById('email-otp-section').classList.add('active');
+          document.getElementById('email-code').focus();
+          showMsg('email-msg', 'Code sent! Check your inbox.', 'ok');
+        } else {
+          const msgs = {
+            email_domain_not_allowed: 'Only @platinumlist.net emails are allowed',
+            email_required: 'Please enter your email',
+            supabase_otp_failed: 'Failed to send code. Try again.',
+          };
+          showMsg('email-msg', msgs[data.error] || data.message || data.error, 'err');
+        }
+      } catch {
+        showMsg('email-msg', 'Network error', 'err');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Send Code to Email';
+    }
+
+    function resetEmail() {
+      document.getElementById('email-otp-section').classList.remove('active');
+      document.getElementById('email-code').value = '';
+      document.getElementById('email-msg').style.display = 'none';
+    }
+
+    async function verifyEmailOtp() {
+      const code = document.getElementById('email-code').value.trim();
+      if (!/^\d{6}$/.test(code)) return;
+      try {
+        const res = await fetch('/api/otp/email-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (data.ok) return location.href = '/';
+        const msgs = {
+          otp_request_required: 'Click "Send Code" first',
+          otp_request_expired: 'Code expired — request a new one',
+          otp_incorrect: 'Incorrect code — check your email',
+        };
+        showMsg('email-msg', msgs[data.error] || data.error, 'err');
+      } catch {
+        showMsg('email-msg', 'Network error', 'err');
+      }
+    }
+
+    document.getElementById('email-code').addEventListener('input', e => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+      if (e.target.value.length === 6) verifyEmailOtp();
+    });
+
+    document.getElementById('email-input').addEventListener('keypress', e => {
+      if (e.key === 'Enter') requestEmailOtp();
+    });
+
+    // === SLACK OTP ===
+    async function requestSlackOtp() {
+      const btn = document.getElementById('btn-slack-send');
+      btn.disabled = true;
+      btn.textContent = 'Requesting...';
+
+      try {
+        const res = await fetch('/api/otp/request', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('slack-otp-section').classList.add('active');
+          document.getElementById('slack-code').focus();
+        }
+      } catch {
+        showMsg('slack-msg', 'Network error', 'err');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Login via Slack (Gatey)';
+    }
+
+    function resetSlack() {
+      document.getElementById('slack-otp-section').classList.remove('active');
+      document.getElementById('slack-code').value = '';
+      document.getElementById('slack-msg').style.display = 'none';
+    }
+
+    async function verifySlackOtp() {
+      const code = document.getElementById('slack-code').value.trim();
+      if (!/^\d{6}$/.test(code)) return;
+      try {
+        const res = await fetch('/api/otp/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+        const data = await res.json();
+        if (data.ok) return location.href = '/';
+        const msgs = {
+          otp_request_required: 'Click "Login via Slack" first',
+          otp_request_expired: 'Code expired — try again',
+          otp_incorrect: 'Incorrect code',
+          slack_history_failed: 'Could not verify — try again',
+        };
+        showMsg('slack-msg', msgs[data.error] || data.error, 'err');
+      } catch {
+        showMsg('slack-msg', 'Network error', 'err');
+      }
+    }
+
+    document.getElementById('slack-code').addEventListener('input', e => {
+      e.target.value = e.target.value.replace(/\D/g, '');
+      if (e.target.value.length === 6) verifySlackOtp();
+    });
+  </script>
+</body>
+</html>
