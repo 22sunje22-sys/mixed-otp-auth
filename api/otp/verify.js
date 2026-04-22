@@ -102,7 +102,8 @@ module.exports = async (req, res) => {
   if (!email) return json(res, 401, { error: 'email_missing_from_request' });
 
   // Verify OTP via Supabase Auth (Gatey generates codes via generateLink -> Supabase Auth OTP)
-  const supabaseKey = process.env.SUPABASE_ANON_KEY || 'REMOVED_SUPABASE_ANON_KEY';
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
+  if (!supabaseKey) return json(res, 500, { error: 'SUPABASE_ANON_KEY missing' });
 
   try {
     const verifyResp = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
