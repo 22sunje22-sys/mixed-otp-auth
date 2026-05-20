@@ -113,12 +113,25 @@ In `b2b-slack-otp-v2/index.ts`, add:
 - Keywords, title, redirect URL to default maps
 - Deploy to Supabase
 
-### 3. Set Vercel Environment Variables
+### 3. Get secrets from 1Password
+
+All credentials are stored in **1Password** under the vault **`Engineering`**:
+
+| 1Password item | Field | Variable |
+|----------------|-------|----------|
+| `Supabase — mixed-otp-auth` | `service_role key` | `SUPABASE_SERVICE_ROLE_KEY` |
+| `Supabase — mixed-otp-auth` | `anon key` | `SUPABASE_ANON_KEY` |
+| `Supabase — mixed-otp-auth` | `OTP signing secret` | `OTP_SIGNING_SECRET` |
+
+> Do not hardcode keys. Do not commit `.env` files.
+
+### 4. Set Vercel Environment Variables
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `OTP_SIGNING_SECRET` | Yes | HMAC secret for cookie signing (min 16 chars) |
-| `SUPABASE_ANON_KEY` | No | Fallback hardcoded, but recommended |
+| `SUPABASE_ANON_KEY` | Yes | Supabase anon key (get from 1Password) |
+| `SUPABASE_SERVICE_ROLE_KEY` | If needed | Admin operations (get from 1Password) |
 
 **NOT needed:** `SLACK_BOT_TOKEN` (lives in Supabase Function secrets only)
 
