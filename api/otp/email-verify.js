@@ -102,8 +102,8 @@ module.exports = async (req, res) => {
 
   // Verify OTP via Supabase Auth
   try {
-    const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-    if (!supabaseKey) return json(res, 500, { error: 'SUPABASE_ANON_KEY missing' });
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    if (!supabaseKey) return json(res, 500, { error: 'SUPABASE_SERVICE_ROLE_KEY missing' });
 
     const verifyResp = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
       method: 'POST',

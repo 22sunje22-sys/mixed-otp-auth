@@ -71,7 +71,7 @@ base64url(JSON_payload).hex(hmac-sha256(payload, OTP_SIGNING_SECRET))
 ### Token Isolation
 - `SLACK_BOT_TOKEN` — Supabase secrets only, never in the app
 - `OTP_SIGNING_SECRET` — app env var, cookie signing
-- `SUPABASE_ANON_KEY` — safe to embed (RLS applies)
+- `SUPABASE_SERVICE_ROLE_KEY` — server-side only, never exposed to client
 
 ### Properties
 - HttpOnly + Secure + SameSite=Lax cookies (no XSS/CSRF)
@@ -120,7 +120,6 @@ All credentials are stored in **1Password** under the vault **`Engineering`**:
 | 1Password item | Field | Variable |
 |----------------|-------|----------|
 | `Supabase — mixed-otp-auth` | `service_role key` | `SUPABASE_SERVICE_ROLE_KEY` |
-| `Supabase — mixed-otp-auth` | `anon key` | `SUPABASE_ANON_KEY` |
 | `Supabase — mixed-otp-auth` | `OTP signing secret` | `OTP_SIGNING_SECRET` |
 
 > Do not hardcode keys. Do not commit `.env` files.
@@ -130,8 +129,7 @@ All credentials are stored in **1Password** under the vault **`Engineering`**:
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `OTP_SIGNING_SECRET` | Yes | HMAC secret for cookie signing (min 16 chars) |
-| `SUPABASE_ANON_KEY` | Yes | Supabase anon key (get from 1Password) |
-| `SUPABASE_SERVICE_ROLE_KEY` | If needed | Admin operations (get from 1Password) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key (get from 1Password) |
 
 **NOT needed:** `SLACK_BOT_TOKEN` (lives in Supabase Function secrets only)
 
