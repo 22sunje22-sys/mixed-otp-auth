@@ -5,9 +5,35 @@ Minimal OTP authentication for internal dashboards. Users log in via **Email OTP
 ## How It Works
 
 1. User enters their corporate email (`@platinumlist.net` only)
-2. Backend calls Supabase Auth `POST /auth/v1/otp` — Supabase sends a 6-digit code via custom SMTP
-3. User enters code → backend verifies via `POST /auth/v1/verify`
+2. Backend calls the shared Supabase edge function **`otp-send`** with its `service_role` key. The function mints a 6-digit code (`auth/v1/admin/generate_link`, which sends nothing) and emails it through **pl-mailer** from `e-notifications@platinumlist.net`. The code is never returned to the app.
+3. User enters code → backend verifies via `POST /auth/v1/verify` (`type: "email"`)
 4. Signed `somauth` HttpOnly cookie set (24h TTL)
+
+> **Do not call `POST /auth/v1/otp` / `signInWithOtp`.** On our Supabase project that makes Supabase Auth send the code through a shared Gmail box (~500 emails/day for everyone; a password change on it broke every login on 11.10.2026). Use `otp-send`.
+
+## `otp-send` — the shared sender
+
+Deployed on Supabase project `kwftlkfvtglnugxsyjci`; source in [`supabase/functions/otp-send`](supabase/functions/otp-send/index.ts).
+
+```
+POST https://<project>.supabase.co/functions/v1/otp-send
+Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+{ "email": "name@platinumlist.net", "app": "My Dashboard", "allow": ["platinumlist.net"] }
+→ 200 { "ok": true }
+```
+
+| Field | Notes |
+|---|---|
+| `email` | Recipient. |
+| `app` | Shown in the email ("Sign in to My Dashboard") and in the send log. Letters, digits, spaces and `.&'()-`, up to 60 chars. |
+| `allow` | Who may receive codes: domains or exact addresses. Default `["platinumlist.net"]`. Pass `["*"]` only if your app checks its own whitelist *before* calling. |
+| `redirect_to` | Optional `https://` URL, only if you also use the magic link. |
+
+Errors: `403 service_role_required` (anon key used), `403 email_not_allowed`, `400 email_invalid` / `app_invalid` / `allow_invalid`, `429 too_many_requests` (5 codes per address per 10 min), `429 daily_cap_reached`, `502 mint_failed` / `send_failed`, `504 send_timeout`.
+
+**No email key in your app.** The pl-mailer key is stored only in Supabase Vault and read by the function. You need nothing beyond the Supabase `service_role` key your backend already has.
+
+**Security:** the gateway verifies the JWT signature (`verify_jwt = true`) and the function additionally requires `role = service_role`, so the public anon key can't trigger emails. Every call is logged in `public.otp_send_log` (RLS on, service_role only) — that table is also the per-app volume report. Failures alert the team Telegram channel.
 
 ## Security
 
@@ -30,7 +56,7 @@ mixed-otp-auth/
 ├── login.html               # Login page (email OTP only)
 ├── vercel.json              # Routes config
 └── api/otp/
-    ├── email-request.js     # Send OTP via Supabase Auth
+    ├── email-request.js     # Ask otp-send to email a code
     ├── email-verify.js      # Verify code, set auth cookie
     ├── session.js           # GET: check auth from somauth cookie
     └── logout.js            # POST: clear all cookies
@@ -44,6 +70,7 @@ mixed-otp-auth/
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase **service role** key — server-side only, never exposed to client. Get from Supabase dashboard → Project Settings → API → `service_role` |
 | `OTP_SIGNING_SECRET` | Yes | Random string ≥ 16 chars for HMAC cookie signing. Generate with: `openssl rand -hex 32` |
 | `OTP_ALLOWED_DOMAIN` | No | Email domain restriction (default: `platinumlist.net`) |
+| `OTP_APP_NAME` | No | Name shown in the email ("Sign in to …"). Default `Dashboard` |
 
 > **Important:** `SUPABASE_SERVICE_ROLE_KEY` has full database access. Never commit it or expose it client-side. Set it as an encrypted environment variable in Vercel (Settings → Environment Variables).
 
@@ -51,7 +78,7 @@ mixed-otp-auth/
 
 1. Enable **Email** auth provider (Auth → Providers → Email)
 2. Set `OTP` mode: Auth → Settings → disable "Confirm email" / enable magic links, or use the email OTP flow
-3. Configure **Custom SMTP** (Auth → Settings → SMTP) so emails come from your domain
+3. No SMTP setup needed — `otp-send` delivers the email. (The project's Custom SMTP is the old Gmail path; don't rely on it.)
 
 ## Protect Your Dashboard
 

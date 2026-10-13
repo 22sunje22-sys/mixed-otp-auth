@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const ALLOWED_DOMAIN = process.env.OTP_ALLOWED_DOMAIN || 'platinumlist.net';
+const APP_NAME = process.env.OTP_APP_NAME || 'Dashboard'; // shown in the email: "Sign in to <APP_NAME>"
 
 const REQ_COOKIE = 'soreq';
 const REQ_TTL_SECONDS = 15 * 60;
@@ -49,22 +50,27 @@ module.exports = async (req, res) => {
     return json(res, 403, { error: 'email_domain_not_allowed', message: `Only @${ALLOWED_DOMAIN} emails are allowed` });
   }
 
+  // The shared edge function otp-send (Supabase project kwftlkfvtglnugxsyjci) mints the code
+  // with admin/generate_link and mails it through pl-mailer from e-notifications@platinumlist.net.
+  // This app holds no email key: the pl-mailer key lives in Supabase Vault. The function only
+  // accepts the service_role key, and never returns the code.
   try {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
     if (!supabaseKey) return json(res, 500, { error: 'SUPABASE_SERVICE_ROLE_KEY missing' });
 
-    const otpResp = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/otp-send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey },
-      body: JSON.stringify({ email, create_user: true }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseKey}` },
+      body: JSON.stringify({ email, app: APP_NAME, allow: [ALLOWED_DOMAIN] }),
+      signal: AbortSignal.timeout(20000),
     });
-
-    if (!otpResp.ok) {
-      const errBody = await otpResp.json().catch(() => ({}));
-      return json(res, 502, { error: 'supabase_otp_failed', detail: errBody.msg || errBody.error_description || `HTTP ${otpResp.status}` });
+    if (r.status === 429) return json(res, 429, { error: 'too_many_requests', message: 'Too many codes requested. Try again in a few minutes.' });
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      return json(res, 502, { error: 'send_failed', detail: errBody.error || `HTTP ${r.status}` });
     }
   } catch (e) {
-    return json(res, 502, { error: 'supabase_otp_failed', detail: String(e?.message || e) });
+    return json(res, 502, { error: 'send_failed', detail: String(e?.message || e) });
   }
 
   const issuedAt = Date.now();
