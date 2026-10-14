@@ -12,6 +12,8 @@
 // Security:
 // - verify_jwt=true: the gateway checks the signature; we additionally require role=service_role.
 //   The anon key (public in every browser) can not call this.
+// - Exception: Atlas calls with its narrow atlas_app key (it must not hold service_role). For that
+//   role the app name is forced to "Atlas" and recipients to platinumlist.net, whatever the body says.
 // - Recipients default to platinumlist.net; a caller must pass allow:["*"] explicitly to email
 //   outsiders, and should only do so after its own whitelist check.
 // - Per-address limit 5 codes / 10 min, global daily cap; every call is logged in
@@ -104,7 +106,9 @@ function body(app: string, otp: string) {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
-  if (jwtRole(req) !== "service_role") return json(403, { error: "service_role_required" });
+  const role = jwtRole(req);
+  if (role !== "service_role" && role !== "atlas_app") return json(403, { error: "service_role_required" });
+  const isAtlas = role === "atlas_app";
 
   if (new URL(req.url).searchParams.get("selftest") === "1") {
     await alert("selftest ok — alert channel works");
@@ -115,8 +119,8 @@ Deno.serve(async (req) => {
   try { input = await req.json(); } catch { return json(400, { error: "invalid_json" }); }
 
   const email = String(input.email ?? "").trim().toLowerCase();
-  const app = String(input.app ?? "").trim();
-  const allow = Array.isArray(input.allow) && input.allow.length
+  const app = isAtlas ? "Atlas" : String(input.app ?? "").trim();
+  const allow = isAtlas ? ["platinumlist.net"] : Array.isArray(input.allow) && input.allow.length
     ? input.allow.map((a) => String(a).trim().toLowerCase())
     : ["platinumlist.net"];
   const redirectTo = typeof input.redirect_to === "string" && /^https:\/\//.test(input.redirect_to) ? input.redirect_to : undefined;
